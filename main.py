@@ -12,7 +12,6 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torchmetrics.classification import MulticlassF1Score
 
 
 def get_args():
@@ -23,6 +22,8 @@ def get_args():
                         default="/home/mohammad/Documents/Hair_segmentation_Abolfazl/dataset/val")
     parser.add_argument("--data_root_test", '-i',
                         default="/home/mohammad/Documents/Hair_segmentation_Abolfazl/dataset/test")
+    parser.add_argument("--weight", '-w',
+                        default="/home/mohammad/Documents/Hair_segmentation_Abolfazl/weight")
     parser.add_argument('--epochs', '-e', type=int, default=50, help='Number of epochs')
     parser.add_argument('--batch_size', '-b', metavar='B', type=int, default=32, help='Batch size')
     parser.add_argument('--learning_rate', '-l', type=float, default=0.0001,
@@ -34,7 +35,6 @@ def get_args():
 def main():
     args = get_args()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    # metric = MulticlassF1Score(num_classes=64).to(device)
 
     def initialize_weights(m):
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -46,11 +46,8 @@ def main():
             nn.init.constant_(m.bias.data, 0)
 
     MyNet = AolfazlNet(input_channel=3, out_channels=1, pretrained=True).to(device)
-
     criteraion = BCELoss2d()
-
     optimiz = optimizer.Adam(MyNet.parameters(), lr=0.0001)
-
     tr = transforms.Compose([transforms.ToTensor(), transforms.Resize((256, 256))])
     train_data = MyData(data_dir=args.data_root_train, transfomr=tr)
     tr_data = DataLoader(train_data, batch_size=args.batch_size, shuffle=False, num_workers=4)
@@ -94,7 +91,8 @@ def main():
         print(f'loss_train: {epoch_train_loss[-1]} | loss_val: {epoch_val_loss[-1]}\n')
         if (epoch + 1) % 2 == 0:
             model_scripted = torch.jit.script(MyNet)  # Export to TorchScript
-            model_scripted.save(f'/home/mohammad/Documents/Hair_segmentation_Abolfazl/weight/Abolfaz_hair{epoch + 1}.pt')  # Save
+            model_scripted.save(
+                f'{args.weight}/Abolfaz_hair{epoch + 1}.pt')  # Save
     return epoch_train_loss, epoch_val_loss, args.epochs
 
 
